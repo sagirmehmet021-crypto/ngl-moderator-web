@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NGL MODERATOR PRO MAX</title>
+<title>NGL MODERATOR</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#090909;color:white;font-family:Arial,sans-serif}
@@ -14,29 +15,26 @@ header p{color:#aaa;margin:7px 0 0}
 nav{width:220px;background:#111;padding:20px}
 nav button{display:block;width:100%;padding:14px;margin:7px 0;background:#1c1c1c;color:white;border:0;border-radius:8px;text-align:left;cursor:pointer}
 nav button:hover{background:#8d0000}
-main{padding:25px;flex:1}
+main{padding:25px;flex:1;min-width:0}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:15px}
 .card{background:#171717;padding:22px;border-radius:12px;border:1px solid #333}
 .card h3{color:#ff2929;margin-top:0}
 .number{font-size:30px;font-weight:bold}
-.panel{background:#151515;padding:22px;border-radius:12px;margin-top:22px}
+.panel{background:#151515;padding:22px;border-radius:12px;margin-top:22px;overflow-wrap:anywhere}
 .panel h2{color:#ff2929}
-input{background:#222;color:white;padding:12px;border:1px solid #555;border-radius:7px;width:100%;margin:8px 0}
 .action{background:#b00000;color:white;padding:12px 18px;border:0;border-radius:7px;cursor:pointer}
 .small{color:#aaa;font-size:13px}
+.event{background:#202020;border:1px solid #444;padding:15px;border-radius:9px;margin:12px 0}
+.event p{overflow-wrap:anywhere}
 @media(max-width:650px){.layout{display:block}nav{width:100%}nav button{display:inline-block;width:auto}}
 </style>
 </head>
 <body>
-  <script>
-if (sessionStorage.getItem("ngl_login") !== "ok") {
-  window.location.href = "login.html";
-}
-</script>
 <header>
-<h2>🐉 NGL MODERATOR PRO MAX</h2>
+<h2>🐉 NGL MODERATOR</h2>
 <p>Yönetim ve kontrol paneli</p>
 </header>
+
 <div class="layout">
 <nav>
 <button onclick="show('home')">🏠 Genel Bakış</button>
@@ -45,38 +43,131 @@ if (sessionStorage.getItem("ngl_login") !== "ok") {
 <button onclick="show('deleted')">🗑️ Silinen Mesajlar</button>
 <button onclick="show('scores')">🏆 PUBG Skorları</button>
 <button onclick="show('settings')">⚙️ Ayarlar</button>
+<button onclick="logout()">🚪 Çıkış Yap</button>
 </nav>
-<main id="content">
-<h1>Genel Bakış</h1>
-<div class="cards">
-<div class="card"><h3>Üyeler</h3><div class="number">0</div></div>
-<div class="card"><h3>Uyarılar</h3><div class="number">0</div></div>
-<div class="card"><h3>Şikayetler</h3><div class="number">0</div></div>
-<div class="card"><h3>Silinen Mesajlar</h3><div class="number">0</div></div>
+<main id="content">Yükleniyor...</main>
 </div>
-<div class="panel">
-<h2>🐉 NGL Sistemi</h2>
-<p>Yönetim paneline hoş geldin.</p>
-<p class="small">WhatsApp bot bağlantısı henüz kurulmadı. Bu ekran şu anda tasarım önizlemesidir.</p>
-</div>
-</main>
-</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-function show(page){
-const names={
-home:"Genel Bakış",
-members:"Üye Yönetimi",
-reports:"Şikayetler",
-deleted:"Silinen Mesajlar",
-scores:"PUBG Skorları",
-settings:"Sistem Ayarları"
-};
-document.getElementById("content").innerHTML=
-`<h1>${names[page]}</h1>
-<div class="panel"><h2>${names[page]}</h2>
-<p>Bu bölüm hazırlanıyor. WhatsApp bot bağlantısı kurulduğunda gerçek veriler burada gösterilecek.</p>
-</div>`;
+const db = window.supabase.createClient(
+  "https://lnlyouzuwuvfyyluixzm.supabase.co",
+  ""
+);
+
+let events = [];
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  })[char]);
 }
+
+async function checkLogin() {
+  const {data, error} = await db.auth.getSession();
+
+  if (error || !data.session) {
+    window.location.href = "login.html";
+    return false;
+  }
+  return true;
+}
+
+async function loadEvents() {
+  const {data, error} = await db
+    .from("ngl_events")
+    .select("*")
+    .order("id", {ascending:false})
+    .limit(100);
+
+  if (error) {
+    console.error(error);
+    alert("Kayıtlar alınamadı: " + error.message);
+    return;
+  }
+
+  events = data || [];
+}
+
+function show(page) {
+  const content = document.getElementById("content");
+
+  if (page === "deleted") {
+    const deleted = events.filter(e => e.event_type === "message_deleted");
+
+    content.innerHTML = `
+      <h1>🗑️ Silinen Mesajlar</h1>
+      <div class="panel">
+        <h2>Toplam silinen mesaj: ${deleted.length}</h2>
+        <button class="action" onclick="refreshDeleted()">Yenile</button>
+        <div id="eventList">
+          ${deleted.length ? deleted.map(e => `
+            <div class="event">
+              <p><b>Grup:</b> ${escapeHTML(e.group_id)}</p>
+              <p><b>Kullanıcı:</b> ${escapeHTML(e.target)}</p>
+              <p><b>Mesaj:</b> ${escapeHTML(e.message)}</p>
+              <p><b>Silinme nedeni:</b> ${escapeHTML(e.reason)}</p>
+            </div>
+          `).join("") : "<p>Henüz silinen mesaj kaydı yok.</p>"}
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (page === "home") {
+    const deleted = events.filter(e => e.event_type === "message_deleted");
+    content.innerHTML = `
+      <h1>Genel Bakış</h1>
+      <div class="cards">
+        <div class="card"><h3>Üyeler</h3><div class="number">0</div></div>
+        <div class="card"><h3>Uyarılar</h3><div class="number">0</div></div>
+        <div class="card"><h3>Şikayetler</h3><div class="number">0</div></div>
+        <div class="card"><h3>Silinen Mesajlar</h3><div class="number">${deleted.length}</div></div>
+      </div>
+      <div class="panel">
+        <h2>🐉 NGL Sistemi</h2>
+        <p>Supabase bağlantısı kuruldu.</p>
+        <p class="small">Son 100 kayıt kontrol ediliyor.</p>
+      </div>`;
+    return;
+  }
+
+  const names = {
+    members:"Üye Yönetimi",
+    reports:"Şikayetler",
+    scores:"PUBG Skorları",
+    settings:"Sistem Ayarları"
+  };
+
+  content.innerHTML = `
+    <h1>${names[page] || "NGL Panel"}</h1>
+    <div class="panel">
+      <h2>${names[page] || "NGL Panel"}</h2>
+      <p>Bu bölüm henüz hazırlanıyor.</p>
+    </div>`;
+}
+
+async function refreshDeleted() {
+  await loadEvents();
+  show("deleted");
+}
+
+async function logout() {
+  await db.auth.signOut();
+  sessionStorage.removeItem("ngl_login");
+  window.location.href = "login.html";
+}
+
+(async () => {
+  if (await checkLogin()) {
+    await loadEvents();
+    show("home");
+  }
+})();
 </script>
 </body>
 </html>
