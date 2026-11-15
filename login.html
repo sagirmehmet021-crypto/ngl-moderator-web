@@ -12,6 +12,7 @@ h2{color:#ff2929;text-align:center}
 input,button{width:100%;padding:13px;margin-top:12px;box-sizing:border-box;border-radius:7px}
 input{background:#222;color:white;border:1px solid #555}
 button{background:#b00000;color:white;border:0;cursor:pointer}
+#message{color:#ff7777}
 </style>
 </head>
 <body>
@@ -19,16 +20,38 @@ button{background:#b00000;color:white;border:0;cursor:pointer}
 <h2>🐉 NGL MODERATOR</h2>
 <p>Yönetici Girişi</p>
 <form id="login">
-<input id="username" placeholder="Kullanıcı adı" required>
+<input id="email" type="email" placeholder="E-posta adresi" required>
 <input id="password" type="password" placeholder="Şifre" required>
 <button type="submit">Giriş Yap</button>
 <p id="message"></p>
 </form>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-document.getElementById("login").addEventListener("submit",async e=>{
-e.preventDefault();
-const message=document.getElementById("message");
+const db = window.supabase.createClient(
+  "https://lnlyouzuwuvfyyluixzm.supabase.co",
+  "BURAYA_SUPABASE_PUBLISHABLE_KEY"
+);
+
+document.getElementById("login").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const message = document.getElementById("message");
+  message.textContent = "Kontrol ediliyor...";
+
+  const { data, error } = await db.auth.signInWithPassword({
+    email: document.getElementById("email").value,
+    password: document.getElementById("password").value
+  });
+
+  if (error) {
+    message.textContent = "Giriş başarısız: " + error.message;
+    return;
+  }
+
+  sessionStorage.setItem("ngl_login", "ok");
+  window.location.href = "index.html";
 });
 </script>
 </body>
