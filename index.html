@@ -28,6 +28,11 @@ input{background:#222;color:white;padding:12px;border:1px solid #555;border-radi
 </style>
 </head>
 <body>
+  <script>
+if (sessionStorage.getItem("ngl_login") !== "ok") {
+  window.location.href = "login.html";
+}
+</script>
 <header>
 <h2>🐉 NGL MODERATOR PRO MAX</h2>
 <p>Yönetim ve kontrol paneli</p>
