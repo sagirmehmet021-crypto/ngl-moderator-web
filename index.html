@@ -41,6 +41,7 @@ main{padding:25px;flex:1;min-width:0}
 <button onclick="show('members')">👥 Üyeler</button>
 <button onclick="show('reports')">📩 Şikayetler</button>
 <button onclick="show('deleted')">🗑️ Silinen Mesajlar</button>
+<button onclick="show('warnings')">⚠️ Uyarılar</button>
 <button onclick="show('scores')">🏆 PUBG Skorları</button>
 <button onclick="show('settings')">⚙️ Ayarlar</button>
 <button onclick="logout()">🚪 Çıkış Yap</button>
@@ -117,14 +118,37 @@ function show(page) {
       </div>`;
     return;
   }
+if (page === "warnings") {
+  const warnings = events.filter(e => e.event_type === "warning");
 
+  content.innerHTML = `
+    <h1>⚠️ Uyarı Kayıtları</h1>
+    <div class="panel">
+      <h2>Toplam uyarı: ${warnings.length}</h2>
+      <button class="action" onclick="refreshWarnings()">Yenile</button>
+
+      <div id="warningList">
+        ${warnings.length ? warnings.map(e => `
+          <div class="event">
+            <p><b>Grup:</b> ${escapeHTML(e.group_id)}</p>
+            <p><b>Uyarı alan:</b> ${escapeHTML(e.target)}</p>
+            <p><b>İşlem:</b> ${escapeHTML(e.message)}</p>
+            <p><b>Sebep:</b> ${escapeHTML(e.reason)}</p>
+            <p><b>Tarih:</b> ${escapeHTML(e.created_at)}</p>
+          </div>
+        `).join("") : "<p>Henüz uyarı kaydı yok.</p>"}
+      </div>
+    </div>`;
+  return;
+}
   if (page === "home") {
     const deleted = events.filter(e => e.event_type === "message_deleted");
+    const warnings = events.filter(e => e.event_type === "warning");
     content.innerHTML = `
       <h1>Genel Bakış</h1>
       <div class="cards">
         <div class="card"><h3>Üyeler</h3><div class="number">0</div></div>
-        <div class="card"><h3>Uyarılar</h3><div class="number">0</div></div>
+        <div class="card"><h3>Uyarılar</h3><div class="number">${warnings.length}</div></div>
         <div class="card"><h3>Şikayetler</h3><div class="number">0</div></div>
         <div class="card"><h3>Silinen Mesajlar</h3><div class="number">${deleted.length}</div></div>
       </div>
@@ -154,6 +178,11 @@ function show(page) {
 async function refreshDeleted() {
   await loadEvents();
   show("deleted");
+}
+
+  async function refreshWarnings() {
+  await loadEvents();
+  show("warnings");
 }
 
 async function logout() {
